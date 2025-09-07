@@ -149,9 +149,15 @@ export default function SignUpPage() {
                 />
               </div>
               {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</div>}
-              <Button type="submit" className="w-full h-11 bg-slate-900 hover:bg-slate-800" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Create account"}
-              </Button>
+              <div className="pt-2">
+                <Button
+                  type="submit"
+                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Creating account..." : "Create account"}
+                </Button>
+              </div>
             </form>
             <div className="mt-6 text-center text-sm">
               Already have an account?{" "}

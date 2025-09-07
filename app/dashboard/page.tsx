@@ -2,13 +2,13 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Users, CheckSquare, Newspaper, TrendingUp, Calendar, Plus } from "lucide-react"
+import { Users, CheckSquare, Newspaper, Calendar, Plus, Building2, Briefcase, Trophy, Star } from "lucide-react"
 import Link from "next/link"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  console.log("[v0] Fetching dashboard data directly from Supabase")
+  console.log("[v0] Fetching comprehensive dashboard data from Supabase")
 
   // Get current user
   const {
@@ -19,12 +19,18 @@ export default async function DashboardPage() {
   console.log("[v0] User:", user?.id, "Auth error:", authError)
 
   let data = {
+    // Existing data
     actorsCount: 0,
     tasksByStatus: {},
     totalTasks: 0,
     recentPRItems: [],
     upcomingTasks: [],
     totalReach: 0,
+    // New data for comprehensive overview
+    brandsCount: 0,
+    campaignsCount: 0,
+    activeCampaigns: 0,
+    topTeamMembers: [],
   }
 
   if (user && !authError) {
@@ -99,6 +105,44 @@ export default async function DashboardPage() {
 
       const totalReach = prReachData?.reduce((sum, item) => sum + (item.reach_estimate || 0), 0) || 0
 
+      const { count: brandsCount, error: brandsError } = await supabase
+        .from("brands")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+
+      console.log("[v0] Brands count:", brandsCount, "Error:", brandsError)
+
+      const { count: campaignsCount, error: campaignsError } = await supabase
+        .from("campaigns")
+        .select("*", { count: "exact", head: true })
+        .eq("owner_id", user.id)
+
+      console.log("[v0] Campaigns count:", campaignsCount, "Error:", campaignsError)
+
+      const { count: activeCampaigns, error: activeCampaignsError } = await supabase
+        .from("campaigns")
+        .select("*", { count: "exact", head: true })
+        .eq("owner_id", user.id)
+        .eq("status", "active")
+
+      console.log("[v0] Active campaigns:", activeCampaigns, "Error:", activeCampaignsError)
+
+      let topTeamMembers = []
+      try {
+        const { data: teamMembersData, error: teamError } = await supabase
+          .from("team_members")
+          .select("name, role, completed_tasks")
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .order("completed_tasks", { ascending: false })
+          .limit(5)
+
+        topTeamMembers = teamMembersData || []
+        console.log("[v0] Top team members:", topTeamMembers?.length, "Error:", teamError)
+      } catch (error) {
+        console.log("[v0] Team members table not available yet")
+      }
+
       data = {
         actorsCount: actorsCount || 0,
         tasksByStatus,
@@ -106,6 +150,10 @@ export default async function DashboardPage() {
         recentPRItems: recentPRItems || [],
         upcomingTasks: upcomingTasks || [],
         totalReach,
+        brandsCount: brandsCount || 0,
+        campaignsCount: campaignsCount || 0,
+        activeCampaigns: activeCampaigns || 0,
+        topTeamMembers,
       }
     } catch (error) {
       console.error("[v0] Dashboard data fetch error:", error)
@@ -121,27 +169,31 @@ export default async function DashboardPage() {
       icon: Users,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
+      href: "/dashboard/talents",
+    },
+    {
+      name: "Total Brands",
+      value: data.brandsCount,
+      icon: Building2,
+      color: "text-purple-600",
+      bgColor: "bg-purple-50",
+      href: "/dashboard/brands",
+    },
+    {
+      name: "Active Campaigns",
+      value: data.activeCampaigns,
+      icon: Briefcase,
+      color: "text-green-600",
+      bgColor: "bg-green-50",
+      href: "/dashboard/campaigns",
     },
     {
       name: "Active Tasks",
       value: (data.tasksByStatus.pending || 0) + (data.tasksByStatus.in_progress || 0),
       icon: CheckSquare,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
-    },
-    {
-      name: "PR Items",
-      value: data.recentPRItems.length,
-      icon: Newspaper,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
-    },
-    {
-      name: "Total Reach",
-      value: data.totalReach.toLocaleString(),
-      icon: TrendingUp,
       color: "text-orange-600",
       bgColor: "bg-orange-50",
+      href: "/dashboard/tasks",
     },
   ]
 
@@ -179,9 +231,17 @@ export default async function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-slate-600 mt-1">Welcome back! Here&apos;s what&apos;s happening with your talents.</p>
+          <p className="text-slate-600 mt-1">
+            Complete overview of your talents, brands, campaigns, and team performance.
+          </p>
         </div>
         <div className="flex gap-3">
+          <Button asChild variant="outline">
+            <Link href="/dashboard/campaigns">
+              <Plus className="w-4 h-4 mr-2" />
+              New Campaign
+            </Link>
+          </Button>
           <Button asChild>
             <Link href="/dashboard/tasks">
               <Plus className="w-4 h-4 mr-2" />
@@ -191,26 +251,27 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.name} className="border-0 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
+          <Link key={stat.name} href={stat.href}>
+            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-slate-600">{stat.name}</p>
+                    <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                  </div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-slate-600">{stat.name}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Upcoming Tasks */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -257,7 +318,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {data.recentPRItems.length > 0 ? (
-              data.recentPRItems.map((item: any) => (
+              data.recentPRItems.slice(0, 3).map((item: any) => (
                 <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
                   <div className="flex-1">
                     <h4 className="font-medium text-slate-900">{item.title}</h4>
@@ -299,7 +360,71 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CardTitle className="text-lg font-semibold">Top Performing Team</CardTitle>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/dashboard/team">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {data.topTeamMembers.length > 0 ? (
+              data.topTeamMembers.map((member: any, index: number) => (
+                <div key={member.name} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold text-sm">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-slate-900">{member.name}</h4>
+                      <p className="text-sm text-slate-600">{member.role}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-yellow-500" />
+                    <span className="text-sm font-medium text-slate-900">{member.completed_tasks || 0} tasks</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <Star className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                <p>No team performance data</p>
+                <Button variant="ghost" size="sm" asChild className="mt-2">
+                  <Link href="/dashboard/team">Add team members</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">Performance Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-slate-900">{data.totalReach.toLocaleString()}</div>
+              <div className="text-sm text-slate-600">Total Reach</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-slate-900">{data.campaignsCount}</div>
+              <div className="text-sm text-slate-600">Total Campaigns</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-slate-900">{data.totalTasks}</div>
+              <div className="text-sm text-slate-600">Total Tasks</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-slate-900">{data.recentPRItems.length}</div>
+              <div className="text-sm text-slate-600">PR Items</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

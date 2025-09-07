@@ -37,12 +37,18 @@ export default function HomePage() {
               Start Free Trial
             </Button>
           </Link>
-          <Link href="/dashboard">
+          <Link href="/auth/login">
             <Button variant="outline" size="lg" className="px-8 bg-transparent">
-              View Demo
+              Sign In
             </Button>
           </Link>
         </div>
+        <p className="text-sm text-slate-500 mt-4">
+          Already have an account?{" "}
+          <Link href="/auth/login" className="text-blue-600 hover:underline font-medium">
+            Sign in here
+          </Link>
+        </p>
       </section>
 
       {/* Features */}

@@ -28,6 +28,8 @@ import {
   UserCheck,
   Shield,
   MessageSquare,
+  Building2,
+  Briefcase,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -36,6 +38,8 @@ import { PermissionGate } from "@/components/rbac/PermissionGate"
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Talents", href: "/dashboard/talents", icon: Users },
+  { name: "Brands", href: "/dashboard/brands", icon: Building2 },
+  { name: "Campaigns", href: "/dashboard/campaigns", icon: Briefcase },
   { name: "Tasks", href: "/dashboard/tasks", icon: CheckSquare },
   { name: "Team", href: "/dashboard/team", icon: UserCheck },
   { name: "Inbox", href: "/inbox", icon: MessageSquare },
@@ -149,7 +153,9 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             </SheetTrigger>
 
             <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-              <div className="flex flex-1"></div>
+              <div className="flex flex-1 items-center">
+                {/* Entity selector removed - dashboard now shows unified overview */}
+              </div>
               <div className="flex items-center gap-x-4 lg:gap-x-6">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
